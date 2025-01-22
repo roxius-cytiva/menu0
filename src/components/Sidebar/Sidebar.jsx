@@ -37,7 +37,14 @@ import {
   ChevronLeft,
   MenuOpen,
   Feedback as FeedbackIcon,
-  ChevronRight
+  ChevronRight,
+  FolderSpecial,
+  ScienceOutlined,
+  SettingsInputComponent,
+  ViewColumn,
+  Science as ScienceIcon,
+  BuildCircle,
+  TipsAndUpdates,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -99,7 +106,7 @@ const projectSubItems = [
   { name: 'Method', icon: <ListIcon />, path: 'method' },
   { name: 'Process Parameters', icon: <Settings />, path: 'parameters' },
   { name: 'Process Quality Attributes', icon: <Assessment />, path: 'attributes' },
-  { name: 'Experiments', icon: <Biotech />, path: 'experiments' },
+  { name: 'Studies', icon: <FolderSpecial />, path: 'studies' },
 ];
 
 const ProjectTitle = styled(Typography)(({ theme }) => ({
@@ -107,6 +114,37 @@ const ProjectTitle = styled(Typography)(({ theme }) => ({
   fontWeight: 500,
   color: theme.palette.text.primary,
   fontSize: '1rem',
+}));
+
+const StudyTitle = styled(Typography)(({ theme }) => ({
+  padding: theme.spacing(1, 2),
+  color: theme.palette.text.secondary,
+  fontSize: '0.875rem',
+  borderLeft: `3px solid ${theme.palette.primary.main}`,
+  backgroundColor: theme.palette.action.selected,
+  margin: theme.spacing(1, 0),
+}));
+
+const ContextContainer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: theme.palette.action.selected,
+  margin: theme.spacing(1, 0),
+  borderLeft: `3px solid ${theme.palette.primary.main}`,
+}));
+
+const ContextLabel = styled(Typography)(({ theme }) => ({
+  fontSize: '0.75rem',
+  color: theme.palette.text.secondary,
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  marginBottom: theme.spacing(0.5),
+}));
+
+const ContextValue = styled(Typography)(({ theme }) => ({
+  fontSize: '0.875rem',
+  color: theme.palette.text.primary,
+  fontWeight: 500,
+  marginBottom: theme.spacing(1),
 }));
 
 const SidebarFooter = styled('div')(({ theme }) => ({
@@ -143,18 +181,81 @@ const ToggleButton = styled(IconButton)(({ theme, open }) => ({
   },
 }));
 
+// Add sample studies data
+const sampleStudies = {
+  'project-a': [
+    { id: 'study-1', name: 'Initial Study' },
+    { id: 'study-2', name: 'Optimization Study' },
+    { id: 'study-3', name: 'Validation Study' },
+  ],
+  'project-b': [
+    { id: 'study-1', name: 'Preliminary Study' },
+    { id: 'study-2', name: 'Main Study' },
+    { id: 'study-3', name: 'Follow-up Study' },
+  ],
+  'project-c': [
+    { id: 'study-1', name: 'Phase 1 Study' },
+    { id: 'study-2', name: 'Phase 2 Study' },
+    { id: 'study-3', name: 'Phase 3 Study' },
+  ],
+};
+
 const Sidebar = ({ open, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedStudy, setSelectedStudy] = useState(null);
+  const [currentStudyId, setCurrentStudyId] = useState(null);
   const pathParts = location.pathname.split('/');
   const currentSection = pathParts[1];
 
   useEffect(() => {
     if (pathParts[1] === 'projects' && pathParts[2]) {
-      setSelectedProject(pathParts[2]);
+      const projectId = pathParts[2];
+      setSelectedProject(projectId);
+      
+      if (pathParts[3] === 'studies') {
+        const studyId = pathParts[4];
+        setCurrentStudyId(studyId);
+        if (pathParts[5]) {
+          setSelectedStudy(pathParts[5]);
+        } else {
+          setSelectedStudy(null);
+        }
+      } else {
+        setCurrentStudyId(null);
+        setSelectedStudy(null);
+      }
+    } else {
+      setSelectedProject(null);
+      setCurrentStudyId(null);
+      setSelectedStudy(null);
     }
   }, [location]);
+
+  // Helper function to get study icon
+  const getStudyIcon = (path) => {
+    switch (path) {
+      case 'options': return <Settings />;
+      case 'system': return <SettingsInputComponent />;
+      case 'column': return <ViewColumn />;
+      case 'experiments': return <ScienceIcon />;
+      case 'yamamoto': return <BuildCircle />;
+      case 'calibration': return <TipsAndUpdates />;
+      default: return <ScienceOutlined />;
+    }
+  };
+
+  // Update the studies section in the project navigation:
+  const getCurrentStudyName = () => {
+    if (pathParts[3] === 'studies' && pathParts[4]) {
+      const studyId = pathParts[4];
+      const studies = sampleStudies[selectedProject?.toLowerCase().replace(' ', '-')] || [];
+      const study = studies.find(s => s.id === studyId);
+      return study?.name;
+    }
+    return null;
+  };
 
   return (
     <>
@@ -211,49 +312,40 @@ const Sidebar = ({ open, onToggle }) => {
                     }} 
                   />
                 </StyledListItem>
-
-                {currentSection === 'projects' && (
-                  <Box sx={{ mt: 2, borderTop: 1, borderColor: 'divider' }}>
-                    <Typography variant="overline" sx={{ px: 2, py: 1, display: 'block' }}>
-                      Recent Projects
-                    </Typography>
-                    {sampleProjects.map((project) => (
-                      <StyledListItem
-                        key={project}
-                        onClick={() => {
-                          setSelectedProject(project);
-                          navigate(`/projects/${project.toLowerCase().replace(' ', '-')}/dashboard`);
-                        }}
-                      >
-                        <ListItemText 
-                          primary={project} 
-                          sx={{ 
-                            opacity: open ? 1 : 0,
-                            display: open ? 'block' : 'none'
-                          }} 
-                        />
-                      </StyledListItem>
-                    ))}
-                  </Box>
-                )}
               </List>
-              <SidebarFooter>
-                <StyledListItem
-                  onClick={() => navigate('/feedback')}
-                  selected={currentSection === 'feedback'}
+
+              {/* Recent Projects - Now always visible */}
+              <Box sx={{ mt: 2, borderTop: 1, borderColor: 'divider' }}>
+                <Typography 
+                  variant="overline" 
+                  sx={{ 
+                    px: 2, 
+                    py: 1, 
+                    display: open ? 'block' : 'none',
+                    opacity: open ? 1 : 0 
+                  }}
                 >
-                  <ListItemIcon>
-                    <FeedbackIcon />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Feedback"
-                    sx={{ 
-                      opacity: open ? 1 : 0,
-                      display: open ? 'block' : 'none'
-                    }} 
-                  />
-                </StyledListItem>
-              </SidebarFooter>
+                  Recent Projects
+                </Typography>
+                {sampleProjects.map((project) => (
+                  <StyledListItem
+                    key={project}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      navigate(`/projects/${project.toLowerCase().replace(' ', '-')}/dashboard`);
+                    }}
+                  >
+                    <ListItemIcon><FolderOutlined /></ListItemIcon>
+                    <ListItemText 
+                      primary={project} 
+                      sx={{ 
+                        opacity: open ? 1 : 0,
+                        display: open ? 'block' : 'none'
+                      }} 
+                    />
+                  </StyledListItem>
+                ))}
+              </Box>
             </>
           ) : (
             // Project Detail Navigation
@@ -282,9 +374,16 @@ const Sidebar = ({ open, onToggle }) => {
               </Box>
               
               {open && (
-                <Typography variant="subtitle1" sx={{ px: 2, mt: 1, fontWeight: 500 }}>
-                  {selectedProject}
-                </Typography>
+                <ContextContainer>
+                  <ContextLabel>You are at</ContextLabel>
+                  <ContextValue>{selectedProject}</ContextValue>
+                  {getCurrentStudyName() && (
+                    <>
+                      <ContextLabel>Study name</ContextLabel>
+                      <ContextValue>{getCurrentStudyName()}</ContextValue>
+                    </>
+                  )}
+                </ContextContainer>
               )}
               
               <List dense sx={{ flexGrow: 1 }}>
